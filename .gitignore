@@ -424,5 +424,19 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+# Firebase & Secrets
+firebase-key.json
+*.json.user
+appsettings.Secrets.json
+
+# Secrets in appsettings
+appsettings.Local.json
+
+# Certificates and Keys
+*.pfx
+*.pem
+*.key
+
+
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
