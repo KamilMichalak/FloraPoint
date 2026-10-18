@@ -1,6 +1,7 @@
 ﻿using FloraPointAPI.DTOs;
 using FloraPointAPI.Models;
 using Google.Cloud.Firestore;
+using Geohash;
 
 namespace FloraPointAPI.Services
 {
@@ -85,6 +86,9 @@ namespace FloraPointAPI.Services
             CollectionReference imagesRef = _firestoreDb.Collection("Images");
             DocumentReference imageDocRef = await imagesRef.AddAsync(imageObj);
 
+            var geohasher = new Geohasher();
+            var calculatedGeohash = geohasher.Encode(dto.Location.Latitude, dto.Location.Longitude, 7);
+
             var photo = new Photo
             {
                 PlantId = dto.PlantId,
@@ -92,6 +96,7 @@ namespace FloraPointAPI.Services
                 Species = dto.Species,
                 ImageId = imageDocRef.Id,
                 Location = dto.Location,
+                Geohash = calculatedGeohash,
                 CreatedAt = DateTime.UtcNow,
                 ReportCount = 0,
                 ReportedBy = new List<string>()

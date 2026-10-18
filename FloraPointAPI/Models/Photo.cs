@@ -24,6 +24,10 @@ namespace FloraPointAPI.Models
         [FirestoreProperty("location")]
         public Google.Type.LatLng Location { get; set; } = new Google.Type.LatLng();
 
+        //geohash do lokalizacji
+        [FirestoreProperty("geohash")]
+        public string Geohash { get; set; } = string.Empty;
+
         //liczba zgłoszeń
         [FirestoreProperty("reportCount")]
         public int ReportCount { get; set; } = 0;
