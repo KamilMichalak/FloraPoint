@@ -17,7 +17,6 @@ namespace FloraPointAPI.Models
         [FirestoreProperty("species")]
         public string Species { get; set; } = string.Empty;
 
-        //zdjecie w base64
         [FirestoreProperty("image")]
         public string Image { get; set; } = string.Empty;
 

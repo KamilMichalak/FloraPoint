@@ -16,5 +16,7 @@ namespace FloraPointAPI.Services
         Task<string> AddPhotoAsync(CreatePhotoDto dto);
         Task<bool> ReportPhotoAsync(string photoId, string userId);
         Task<bool> DeletePhotoAsync(string photoId, string userId);
+
+        Task<string?> GetPhotoImageAsync(string photoId);
     }
 }

@@ -174,5 +174,19 @@ namespace FloraPointAPI.Controllers
             await _photoService.DeletePhotoAsync(id, actionDto.UserId);
             return Ok(new { message = "Zdjęcie zostało pomyślnie usunięte." });
         }
+
+        [HttpGet("{id}/image")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPhotoImage(string id)
+        {
+            var base64Image = await _photoService.GetPhotoImageAsync(id);
+            if (string.IsNullOrEmpty(base64Image))
+            {
+                return NotFound(new { message = "Nie znaleziono obrazka dla podanego ID." });
+            }
+
+            return Ok(new { image = base64Image });
+        }
     }
 }

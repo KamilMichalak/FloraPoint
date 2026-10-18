@@ -41,7 +41,7 @@ def kompresuj(input, output, max_wymiar=2000, max_kb=500):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Brak argumentów wejściowych", file=sys.stderr)
+        print("brak argumentów wejściowych", file=sys.stderr)
         sys.exit(1)
         
     wejscie = sys.argv[1]
