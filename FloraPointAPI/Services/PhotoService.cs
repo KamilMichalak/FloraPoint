@@ -90,7 +90,7 @@ namespace FloraPointAPI.Services
                 PlantId = dto.PlantId,
                 UserId = dto.UserId,
                 Species = dto.Species,
-                Image = imageDocRef.Id,
+                ImageId = imageDocRef.Id,
                 Location = dto.Location,
                 CreatedAt = DateTime.UtcNow,
                 ReportCount = 0,
@@ -147,27 +147,31 @@ namespace FloraPointAPI.Services
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(photo.Image))
+            //usuwanie obrazka
+            if (!string.IsNullOrEmpty(photo.ImageId))
             {
-                DocumentReference imgDocRef = _firestoreDb.Collection("Images").Document(photo.Image);
+                DocumentReference imgDocRef = _firestoreDb.Collection("Images").Document(photo.ImageId);
                 await imgDocRef.DeleteAsync();
             }
 
+            //usuwanie reszty
             await docRef.DeleteAsync();
             return true;
         }
 
         public async Task<string?> GetPhotoImageAsync(string photoId)
         {
+            //najpierw pobierz całe zdjęcie
             DocumentReference photoDocRef = _firestoreDb.Collection("Photos").Document(photoId);
             DocumentSnapshot photoSnapshot = await photoDocRef.GetSnapshotAsync();
 
             if (!photoSnapshot.Exists) return null;
 
             var photo = photoSnapshot.ConvertTo<Photo>();
-            if (string.IsNullOrEmpty(photo.Image)) return null;
+            if (string.IsNullOrEmpty(photo.ImageId)) return null;
 
-            DocumentReference imgDocRef = _firestoreDb.Collection("Images").Document(photo.Image);
+            //pobierz sam obrazek po id
+            DocumentReference imgDocRef = _firestoreDb.Collection("Images").Document(photo.ImageId);
             DocumentSnapshot imgSnapshot = await imgDocRef.GetSnapshotAsync();
 
             if (!imgSnapshot.Exists) return null;

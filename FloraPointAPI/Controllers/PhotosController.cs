@@ -175,6 +175,7 @@ namespace FloraPointAPI.Controllers
             return Ok(new { message = "Zdjęcie zostało pomyślnie usunięte." });
         }
 
+        //pobierz sam obrazek
         [HttpGet("{id}/image")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
