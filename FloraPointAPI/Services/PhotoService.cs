@@ -49,10 +49,67 @@ namespace FloraPointAPI.Services
     double maxLng,
     List<string>? plantIds = null)
         {
+
             CollectionReference photosRef = _firestoreDb.Collection("Photos");
 
-            QuerySnapshot snapshot = await photosRef.GetSnapshotAsync();
+
+
+            //oblicznie parametrów okręgu
+            double midLat = (minLat + maxLat) / 2;
+            double midLng = (minLng + maxLng) / 2;
+            double lat = (maxLat - minLat) * 111000; // na metry
+            double lng = (maxLng - minLng) * 111000 *Math.Cos(midLat * Math.PI / 180.0);
+            double diagonal = Math.Sqrt((lat * lat)+(lng * lng));
+            double radius = diagonal / 2.0;
+
             
+            var radiusHasher = new RadiusHasher();
+            int precision = 1;
+            HashSet<string> hashes = new HashSet<string>();
+
+            // firestore w wherein pozwala do max 30 pozycji
+            while (precision< 7)
+            {
+                var newHashes = radiusHasher.GetHashes(midLat, midLng, radius, precision + 1);
+
+                if (newHashes.Count <= 30)
+                {
+                    precision++;
+                    hashes = newHashes;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // podstawowo precyzja 1 jak się nie wykonało
+            if (!hashes.Any())
+            {
+                hashes = radiusHasher.GetHashes(midLat, midLng, radius, precision);
+            }
+
+            var uHashes = hashes.ToList();
+
+
+
+            //debug
+            //Console.WriteLine($"precyzja: {precision}, liczba hashy: {uHashes.Count}");
+            //Console.WriteLine($"hashe: {string.Join(", ", uHashes)}");
+
+
+            QuerySnapshot snapshot;
+            if (uHashes.Any())
+            {
+                //wstępnie pobranie według geohashy
+                Query query = photosRef.WhereIn("geohash", uHashes);
+                snapshot = await query.GetSnapshotAsync();
+            }
+            else
+            {
+                return new List<Photo>();
+            }
+
             //filtr po lokalizacji tutaj, nie przy samym pobieraniu z bazy bo nazwy typów się mieszają i nic nie zwraca
             var photos = snapshot.Documents
                 .Select(doc => doc.ConvertTo<Photo>())
