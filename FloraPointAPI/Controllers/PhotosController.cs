@@ -60,7 +60,7 @@ namespace FloraPointAPI.Controllers
         }
 
         //pobierz zdjęcia z danego obszaru (+ danej rośliny)
-        [HttpPost("area")]
+        [HttpPost("area-search")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -68,12 +68,13 @@ namespace FloraPointAPI.Controllers
         {
             if (areaDto == null)
             {
-                return BadRequest(new { message = "Nieprawidłowe parametry wyszukiwania obszaru." });
+                return BadRequest(new { message = "Nieprawidłowe parametry." });
             }
 
-            if (areaDto.PlantIds != null && areaDto.PlantIds.Count > 0)
+            var PlantIds = areaDto.PlantIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+            if (PlantIds != null && PlantIds.Any())
             {
-                foreach (var plantId in areaDto.PlantIds)
+                foreach (var plantId in PlantIds)
                 {
                     var plantExists = await _plantService.GetPlantByIdAsync(plantId);
                     if (plantExists == null)
@@ -188,6 +189,47 @@ namespace FloraPointAPI.Controllers
             }
 
             return Ok(new { image = base64Image });
+        }
+
+
+
+
+
+        [HttpPost("radius-search")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetPhotosInRadius([FromBody] RadiusSearchDto dto)
+        {
+            if (dto.Radius <= 0)
+            {
+                return BadRequest(new { message = "Promień musi być większy niż 0" });
+            }
+
+            if (dto.Radius > 2000000)
+            {
+                return BadRequest(new { message = "Maksymalny dopuszczalny promień to 2000 km." });
+            }
+
+
+            var PlantIds = dto.PlantIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+            if (PlantIds != null && PlantIds.Any())
+            {
+                foreach (var plantId in PlantIds)
+                {
+                    var plantExists = await _plantService.GetPlantByIdAsync(plantId);
+
+                    if (plantExists == null)
+                    {
+                        return NotFound(new { message = $"Nie znaleziono rośliny o ID: {plantId}." });
+
+                    }
+                }
+            }
+
+            var photos = await _photoService.GetPhotosInRadiusAsync(dto.CenterLat,dto.CenterLng,dto.Radius,dto.PlantIds);
+
+            return Ok(photos);
         }
     }
 }

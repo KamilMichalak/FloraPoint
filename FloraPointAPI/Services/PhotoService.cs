@@ -1,7 +1,9 @@
 ﻿using FloraPointAPI.DTOs;
 using FloraPointAPI.Models;
-using Google.Cloud.Firestore;
+using FloraPointAPI.Scripts;
 using Geohash;
+using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FloraPointAPI.Services
 {
@@ -42,12 +44,7 @@ namespace FloraPointAPI.Services
             return snapshot.Documents.Select(doc => doc.ConvertTo<Photo>()).ToList();
         }
 
-        public async Task<List<Photo>> GetPhotosInAreaAsync(
-    double minLat,
-    double maxLat,
-    double minLng,
-    double maxLng,
-    List<string>? plantIds = null)
+        public async Task<List<Photo>> GetPhotosInAreaAsync(double minLat,double maxLat,double minLng,double maxLng,List<string>? plantIds = null)
         {
 
             CollectionReference photosRef = _firestoreDb.Collection("Photos");
@@ -67,7 +64,7 @@ namespace FloraPointAPI.Services
             int precision = 1;
             HashSet<string> hashes = new HashSet<string>();
 
-            // firestore w wherein pozwala do max 30 pozycji
+            
             while (precision< 7)
             {
                 var newHashes = radiusHasher.GetHashes(midLat, midLng, radius, precision + 1);
@@ -97,21 +94,32 @@ namespace FloraPointAPI.Services
             //Console.WriteLine($"precyzja: {precision}, liczba hashy: {uHashes.Count}");
             //Console.WriteLine($"hashe: {string.Join(", ", uHashes)}");
 
-
-            QuerySnapshot snapshot;
-            if (uHashes.Any())
-            {
-                //wstępnie pobranie według geohashy
-                Query query = photosRef.WhereIn("geohash", uHashes);
-                snapshot = await query.GetSnapshotAsync();
-            }
-            else
+            if (!uHashes.Any())
             {
                 return new List<Photo>();
             }
 
+            // w bazie jest precyzja 7 więc szukanie przedziałowe
+            var tasks = uHashes.Select(async h =>
+            {
+                Query query = photosRef
+                    .WhereGreaterThanOrEqualTo("geohash", h)
+                    .WhereLessThanOrEqualTo("geohash", h + "~");
+
+                var snapshot = await query.GetSnapshotAsync();
+                return snapshot.Documents;
+            });
+
+            var results = await Task.WhenAll(tasks);
+            //łączenie wyników/usuwanie duplikatów
+            var documents = results
+                .SelectMany(docs => docs)
+                .GroupBy(doc => doc.Id)
+                .Select(g => g.First())
+                .ToList();
+
             //filtr po lokalizacji tutaj, nie przy samym pobieraniu z bazy bo nazwy typów się mieszają i nic nie zwraca
-            var photos = snapshot.Documents
+            var photos = documents
                 .Select(doc => doc.ConvertTo<Photo>())
                 .Where(p => p.Location != null
                          && p.Location.Latitude >= minLat
@@ -240,6 +248,75 @@ namespace FloraPointAPI.Services
 
             var image = imgSnapshot.ConvertTo<Image>();
             return image.Data;
+        }
+
+
+        public async Task<List<Photo>> GetPhotosInRadiusAsync(double centerLat, double centerLng, double radiusMeters, List<string>? plantIds = null)
+        {
+            CollectionReference photosRef = _firestoreDb.Collection("Photos");
+
+            var radiusHasher = new RadiusHasher();
+            int precision = 1;
+            HashSet<string> hashes = new HashSet<string>();
+
+
+
+            while (precision < 7)
+            {
+                var newHashes = radiusHasher.GetHashes(centerLat, centerLng, radiusMeters, precision + 1);
+
+                if (newHashes.Count <= 30)
+                {
+                    precision++;
+                    hashes = newHashes;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (!hashes.Any())
+            {
+                hashes = radiusHasher.GetHashes(centerLat, centerLng, radiusMeters, precision);
+            }
+
+            var uHashes = hashes.ToList();
+
+            if (!uHashes.Any())
+            {
+                return new List<Photo>();
+            }
+
+            var tasks = uHashes.Select(async h =>
+            {
+                Query query = photosRef
+                    .WhereGreaterThanOrEqualTo("geohash", h)
+                    .WhereLessThanOrEqualTo("geohash", h + "~");
+
+                var snapshot = await query.GetSnapshotAsync();
+                return snapshot.Documents;
+            });
+
+            var results = await Task.WhenAll(tasks);
+
+            var documents = results
+                .SelectMany(docs => docs)
+                .GroupBy(doc => doc.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            var photos = documents
+                .Select(doc => doc.ConvertTo<Photo>())
+                .Where(p => p.Location != null && GeoUtils.CalculateDistanceMeters(centerLat, centerLng, p.Location.Latitude, p.Location.Longitude) <= radiusMeters);
+
+
+            if (plantIds != null && plantIds.Any())
+            {
+                photos = photos.Where(p => plantIds.Contains(p.PlantId));
+            }
+
+            return photos.ToList();
         }
     }
 }

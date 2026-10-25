@@ -18,5 +18,8 @@ namespace FloraPointAPI.Services
         Task<bool> DeletePhotoAsync(string photoId, string userId);
 
         Task<string?> GetPhotoImageAsync(string photoId);
+
+        Task<List<Photo>> GetPhotosInRadiusAsync(double centerLat, double centerLng, double radius, List<string>? plantIds = null);
+
     }
 }
