@@ -4,6 +4,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 
 namespace FloraPointAPI
 {
@@ -52,7 +53,19 @@ namespace FloraPointAPI
             //rejestracja serwisów
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+
+
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new() { Title = "FloraPointAPI", Version = "v1" });
+
+                // wskazanie pliku z dokumentacj¹
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
+            });
+
+
             builder.Services.AddScoped<IPlantService, PlantService>();
             builder.Services.AddScoped<IPhotoService, PhotoService>();
             builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();

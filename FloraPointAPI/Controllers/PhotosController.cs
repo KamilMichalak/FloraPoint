@@ -194,21 +194,32 @@ namespace FloraPointAPI.Controllers
 
 
 
-
+        /// <summary>
+        /// Returns all photos in given distance from specified point
+        /// </summary>
+        /// <remarks>
+        /// Makes use of geohashes to narrow down the search area. Radius is to be provided in meters. 
+        /// Optionally, user may specify which plants' photos to look for.
+        /// </remarks>
+        /// <param name="dto">Object containing point's coordinates, radius in meters and optional plant's ids</param>
+        /// <returns>List of photos located in the area.</returns>
+        /// <response code="200">Returns list of matching photos.</response>
+        /// <response code="400">When the radius is negative, equal zero or is to big.</response>
+        /// <response code="404">When specified plant does not exist in the database.</response>
         [HttpPost("radius-search")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(List<Photo>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotosInRadius([FromBody] RadiusSearchDto dto)
         {
             if (dto.Radius <= 0)
             {
-                return BadRequest(new { message = "Promień musi być większy niż 0" });
+                return BadRequest(new ErrorDto { Message = "Promień musi być większy niż 0." });
             }
 
             if (dto.Radius > 2000000)
             {
-                return BadRequest(new { message = "Maksymalny dopuszczalny promień to 2000 km." });
+                return BadRequest(new ErrorDto { Message = "Maksymalny dopuszczalny promień to 2000 km." });
             }
 
 
