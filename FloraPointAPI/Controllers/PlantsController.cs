@@ -44,7 +44,7 @@ namespace FloraPointAPI.Controllers
             var plant = await _plantService.GetPlantByIdAsync(id);
             if (plant == null)
             {
-                return NotFound(new { message = "Nie znaleziono rośliny o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono rośliny o podanym ID." });
             }
 
             return Ok(plant);

@@ -47,7 +47,7 @@ namespace FloraPointAPI.Controllers
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             return Ok(photo);
@@ -68,7 +68,7 @@ namespace FloraPointAPI.Controllers
             var plantExists = await _plantService.GetPlantByIdAsync(plantId);
             if (plantExists == null)
             {
-                return NotFound(new { message = "Nie znaleziono rośliny o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono rośliny o podanym ID." });
             }
 
             var photos = await _photoService.GetPhotosByPlantIdAsync(plantId);
@@ -95,7 +95,7 @@ namespace FloraPointAPI.Controllers
         {
             if (areaDto == null)
             {
-                return BadRequest(new { message = "Nieprawidłowe parametry." });
+                return BadRequest(new ErrorDto { Message = "Nieprawidłowe parametry." });
             }
 
             var PlantIds = areaDto.PlantIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
@@ -106,7 +106,7 @@ namespace FloraPointAPI.Controllers
                     var plantExists = await _plantService.GetPlantByIdAsync(plantId);
                     if (plantExists == null)
                     {
-                        return NotFound(new { message = $"Nie znaleziono rośliny o ID: {plantId}." });
+                        return NotFound(new ErrorDto { Message = $"Nie znaleziono rośliny o ID: {plantId}." });
                     }
                 }
             }
@@ -142,14 +142,14 @@ namespace FloraPointAPI.Controllers
         {
             if (photoDto == null || photoDto.ImageFile == null || photoDto.ImageFile.Length == 0)
             {
-                return BadRequest(new { message = "Nieprawidłowe dane lub brak pliku." });
+                return BadRequest(new ErrorDto { Message = "Nieprawidłowe dane lub brak pliku." });
             }
 
             //sprawdź czy istnieje
             var plantExists = await _plantService.GetPlantByIdAsync(photoDto.PlantId);
             if (plantExists == null)
             {
-                return NotFound(new { message = "Nie znaleziono rośliny o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono rośliny o podanym ID." });
             }
 
        
@@ -176,19 +176,19 @@ namespace FloraPointAPI.Controllers
         {
             if (string.IsNullOrWhiteSpace(actionDto.UserId))
             {
-                return BadRequest(new { message = "UserId jest wymagany." });
+                return BadRequest(new ErrorDto { Message = "UserId jest wymagany." });
             }
 
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             var success = await _photoService.ReportPhotoAsync(id, actionDto.UserId);
             if (!success)
             {
-                return BadRequest(new { message = "Zdjęcie zostało już wcześniej zgłoszone przez tego użytkownika." });
+                return BadRequest(new ErrorDto { Message = "Zdjęcie zostało już wcześniej zgłoszone przez tego użytkownika." });
             }
 
             return Ok(new { message = "Zdjęcie zostało pomyślnie zgłoszone." });
@@ -217,18 +217,18 @@ namespace FloraPointAPI.Controllers
         {
             if (string.IsNullOrWhiteSpace(actionDto.UserId))
             {
-                return BadRequest(new { message = "UserId jest wymagany." });
+                return BadRequest(new ErrorDto { Message = "UserId jest wymagany." });
             }
 
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             if (photo.UserId != actionDto.UserId)
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Brak uprawnień." });
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorDto { Message = "Brak uprawnień." });
             }
 
             await _photoService.DeletePhotoAsync(id, actionDto.UserId);
@@ -250,7 +250,7 @@ namespace FloraPointAPI.Controllers
             var base64Image = await _photoService.GetPhotoImageAsync(id);
             if (string.IsNullOrEmpty(base64Image))
             {
-                return NotFound(new { message = "Nie znaleziono obrazka dla podanego ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono obrazka dla podanego ID." });
             }
 
             return Ok(new { image = base64Image });
@@ -297,7 +297,7 @@ namespace FloraPointAPI.Controllers
 
                     if (plantExists == null)
                     {
-                        return NotFound(new { message = $"Nie znaleziono rośliny o ID: {plantId}." });
+                        return NotFound(new ErrorDto { Message = $"Nie znaleziono rośliny o ID: {plantId}." });
 
                     }
                 }
