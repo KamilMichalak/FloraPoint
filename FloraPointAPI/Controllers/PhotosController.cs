@@ -19,56 +19,83 @@ namespace FloraPointAPI.Controllers
             _plantService = plantService;
         }
 
-        //pobierz wszystkie zdjęcia
+        /// <summary>
+        /// Returns all photos from the database
+        /// </summary>
+        /// <returns>List of all photos.</returns>
+        /// <response code="200">Returns the list of photos.</response>
         [HttpGet]
-        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(List<Photo>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllPhotos()
         {
             var photos = await _photoService.GetAllPhotosAsync();
             return Ok(photos);
         }
 
-        //pobierz zdjęcie po ID
+        /// <summary>
+        /// Returns a specific photo by its ID
+        /// </summary>
+        /// <param name="id">The unique identifier of the photo</param>
+        /// <returns>The requested photo object.</returns>
+        /// <response code="200">Returns the photo.</response>
+        /// <response code="404">When the photo with the specified ID does not exist.</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(Photo), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotoById(string id)
         {
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             return Ok(photo);
         }
 
-        //pobierz zdjęcia konkretnej rośliny
+        /// <summary>
+        /// Returns all photos of a specific plant
+        /// </summary>
+        /// <param name="plantId">The identifier of the plant</param>
+        /// <returns>List of photos for the specified plant.</returns>
+        /// <response code="200">Returns the list of matching photos.</response>
+        /// <response code="404">When the plant with the specified ID does not exist.</response>
         [HttpGet("plant/{plantId}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(List<Photo>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotosByPlantId(string plantId)
         {
             var plantExists = await _plantService.GetPlantByIdAsync(plantId);
             if (plantExists == null)
             {
-                return NotFound(new { message = "Nie znaleziono rośliny o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono rośliny o podanym ID." });
             }
 
             var photos = await _photoService.GetPhotosByPlantIdAsync(plantId);
             return Ok(photos);
         }
 
-        //pobierz zdjęcia z danego obszaru (+ danej rośliny)
+        /// <summary>
+        /// Returns all photos from a specified area
+        /// </summary>
+        /// <remarks>
+        /// Calculates an area using min/max latitude and longitude and uses geohashes to narrow down
+        /// the database query. Optionally filters by a list of plant IDs.
+        /// </remarks>
+        /// <param name="areaDto">Object containing min/max latitude and longitude and optional plant IDs</param>
+        /// <returns>List of photos located within the area.</returns>
+        /// <response code="200">Returns the list of matching photos.</response>
+        /// <response code="400">When parameters are invalid.</response>
+        /// <response code="404">When a specified plant does not exist.</response>
         [HttpPost("area-search")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(List<Photo>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotosInArea([FromBody] AreaSearchDto areaDto)
         {
             if (areaDto == null)
             {
-                return BadRequest(new { message = "Nieprawidłowe parametry." });
+                return BadRequest(new ErrorDto { Message = "Nieprawidłowe parametry." });
             }
 
             var PlantIds = areaDto.PlantIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
@@ -79,7 +106,7 @@ namespace FloraPointAPI.Controllers
                     var plantExists = await _plantService.GetPlantByIdAsync(plantId);
                     if (plantExists == null)
                     {
-                        return NotFound(new { message = $"Nie znaleziono rośliny o ID: {plantId}." });
+                        return NotFound(new ErrorDto { Message = $"Nie znaleziono rośliny o ID: {plantId}." });
                     }
                 }
             }
@@ -95,23 +122,34 @@ namespace FloraPointAPI.Controllers
             return Ok(photos);
         }
 
-        //dodaj nowe zdjęcie
+        /// <summary>
+        /// Creates a new photo in the database
+        /// </summary>
+        /// <remarks>
+        /// Compresses the uploaded image file, converts it to Base64, and saves it in a separate 'Images' collection. 
+        /// Automatically encodes the location into a level-7 geohash for spatial queries.
+        /// </remarks>
+        /// <param name="photoDto">Form containing image, plant ID, user ID, species, and location</param>
+        /// <returns>Created photo object.</returns>
+        /// <response code="201">Returns the created photo.</response>
+        /// <response code="400">When data is invalid or file is missing.</response>
+        /// <response code="404">When the specified plant does not exist.</response>
         [HttpPost]
-        [ProducesResponseType(typeof(Photo), 201)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(Photo), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CreatePhoto([FromForm] CreatePhotoDto photoDto)
         {
             if (photoDto == null || photoDto.ImageFile == null || photoDto.ImageFile.Length == 0)
             {
-                return BadRequest(new { message = "Nieprawidłowe dane lub brak pliku." });
+                return BadRequest(new ErrorDto { Message = "Nieprawidłowe dane lub brak pliku." });
             }
 
             //sprawdź czy istnieje
             var plantExists = await _plantService.GetPlantByIdAsync(photoDto.PlantId);
             if (plantExists == null)
             {
-                return NotFound(new { message = "Nie znaleziono rośliny o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono rośliny o podanym ID." });
             }
 
        
@@ -121,71 +159,98 @@ namespace FloraPointAPI.Controllers
             return CreatedAtAction(nameof(GetPhotoById), new { id = createdId }, createdPhoto);
         }
 
-        //zgłoś zdjęcie
+        /// <summary>
+        /// Reports a photo
+        /// </summary>
+        /// <param name="id">The identifier of the photo to report</param>
+        /// <param name="actionDto">Object containing the user ID of the reporter</param>
+        /// <returns>Success message.</returns>
+        /// <response code="200">When the photo is successfully reported.</response>
+        /// <response code="400">When UserId is missing or photo was already reported by this user.</response>
+        /// <response code="404">When the photo does not exist.</response>
         [HttpPost("{id}/report")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ReportPhoto(string id, [FromBody] PhotoActionDto actionDto)
         {
             if (string.IsNullOrWhiteSpace(actionDto.UserId))
             {
-                return BadRequest(new { message = "UserId jest wymagany." });
+                return BadRequest(new ErrorDto { Message = "UserId jest wymagany." });
             }
 
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             var success = await _photoService.ReportPhotoAsync(id, actionDto.UserId);
             if (!success)
             {
-                return BadRequest(new { message = "Zdjęcie zostało już wcześniej zgłoszone przez tego użytkownika." });
+                return BadRequest(new ErrorDto { Message = "Zdjęcie zostało już wcześniej zgłoszone przez tego użytkownika." });
             }
 
             return Ok(new { message = "Zdjęcie zostało pomyślnie zgłoszone." });
         }
 
-        //usuń zdjęcie
+        /// <summary>
+        /// Deletes a photo by its ID
+        /// </summary>
+        /// <remarks>
+        /// Checks if the user is the creator of the photo.
+        /// If authorized, it deletes both the photo metadata and the associated image document.
+        /// </remarks>
+        /// <param name="id">The unique identifier of the photo to delete</param>
+        /// <param name="actionDto">Object containing user ID</param>
+        /// <returns>Success message.</returns>
+        /// <response code="200">When the photo is successfully deleted.</response>
+        /// <response code="400">When UserId is missing.</response>
+        /// <response code="403">When the user does not have permission to delete the photo.</response>
+        /// <response code="404">When the photo does not exist.</response>
         [HttpDelete("{id}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeletePhoto(string id, [FromBody] PhotoActionDto actionDto)
         {
             if (string.IsNullOrWhiteSpace(actionDto.UserId))
             {
-                return BadRequest(new { message = "UserId jest wymagany." });
+                return BadRequest(new ErrorDto { Message = "UserId jest wymagany." });
             }
 
             var photo = await _photoService.GetPhotoByIdAsync(id);
             if (photo == null)
             {
-                return NotFound(new { message = "Nie znaleziono zdjęcia o podanym ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono zdjęcia o podanym ID." });
             }
 
             if (photo.UserId != actionDto.UserId)
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Brak uprawnień." });
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorDto { Message = "Brak uprawnień." });
             }
 
             await _photoService.DeletePhotoAsync(id, actionDto.UserId);
             return Ok(new { message = "Zdjęcie zostało pomyślnie usunięte." });
         }
 
-        //pobierz sam obrazek
+        /// <summary>
+        /// Returns base64 image string for a specific photo
+        /// </summary>
+        /// <param name="id">The unique identifier of the photo</param>
+        /// <returns>Object containing the base64 image data string.</returns>
+        /// <response code="200">Returns the base64 image data.</response>
+        /// <response code="404">When the image or photo does not exist.</response>
         [HttpGet("{id}/image")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotoImage(string id)
         {
             var base64Image = await _photoService.GetPhotoImageAsync(id);
             if (string.IsNullOrEmpty(base64Image))
             {
-                return NotFound(new { message = "Nie znaleziono obrazka dla podanego ID." });
+                return NotFound(new ErrorDto { Message = "Nie znaleziono obrazka dla podanego ID." });
             }
 
             return Ok(new { image = base64Image });
@@ -194,21 +259,32 @@ namespace FloraPointAPI.Controllers
 
 
 
-
+        /// <summary>
+        /// Returns all photos in given distance from specified point
+        /// </summary>
+        /// <remarks>
+        /// Makes use of geohashes to narrow down the search area. Radius is to be provided in meters. 
+        /// Optionally, user may specify which plants' photos to look for.
+        /// </remarks>
+        /// <param name="dto">Object containing point's coordinates, radius in meters and optional plant's ids</param>
+        /// <returns>List of photos located in the area.</returns>
+        /// <response code="200">Returns list of matching photos.</response>
+        /// <response code="400">When the radius is negative, equal zero or is too big.</response>
+        /// <response code="404">When specified plant does not exist in the database.</response>
         [HttpPost("radius-search")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(List<Photo>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDto), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPhotosInRadius([FromBody] RadiusSearchDto dto)
         {
             if (dto.Radius <= 0)
             {
-                return BadRequest(new { message = "Promień musi być większy niż 0" });
+                return BadRequest(new ErrorDto { Message = "Promień musi być większy niż 0." });
             }
 
             if (dto.Radius > 2000000)
             {
-                return BadRequest(new { message = "Maksymalny dopuszczalny promień to 2000 km." });
+                return BadRequest(new ErrorDto { Message = "Maksymalny dopuszczalny promień to 2000 km." });
             }
 
 
@@ -221,7 +297,7 @@ namespace FloraPointAPI.Controllers
 
                     if (plantExists == null)
                     {
-                        return NotFound(new { message = $"Nie znaleziono rośliny o ID: {plantId}." });
+                        return NotFound(new ErrorDto { Message = $"Nie znaleziono rośliny o ID: {plantId}." });
 
                     }
                 }
