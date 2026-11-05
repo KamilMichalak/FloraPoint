@@ -51,6 +51,18 @@ namespace FloraPointAPI
                 });
 
             //rejestracja serwisów
+            //CORS - zezwolenie przegladarce na zapytania z frontendu webowego (adresy w appsettings)
+            var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("WebFrontend", policy =>
+                {
+                    policy.WithOrigins(corsOrigins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
@@ -80,6 +92,8 @@ namespace FloraPointAPI
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("WebFrontend");
 
             app.UseAuthentication();
             app.UseAuthorization();
