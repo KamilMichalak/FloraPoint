@@ -437,6 +437,9 @@ appsettings.Local.json
 *.pem
 *.key
 
+# macOS
+.DS_Store
+
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
